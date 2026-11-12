@@ -1,0 +1,1165 @@
+{
+  "info": {
+    "name": "ContentFlow API (MongoDB Atlas)",
+    "description": "EP2 BDY0101 – Forma A. Ejecutar en orden.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1. Conectividad",
+      "item": [
+        {
+          "name": "Salud: ping a MongoDB Atlas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/salud",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "salud"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Atlas conectado', () => pm.expect(pm.response.json().atlas).to.eql('conectado'));",
+                  "pm.test('Región SA_EAST_1', () => pm.expect(pm.response.json().region).to.eql('SA_EAST_1'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. Usuarios",
+      "item": [
+        {
+          "name": "Listar usuarios móviles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios?dispositivo=Móvil&limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ],
+              "query": [
+                {
+                  "key": "dispositivo",
+                  "value": "Móvil"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve 5', () => pm.expect(pm.response.json().datos.length).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Valentina Soto\",\n  \"correo\": \"valentina.{{$timestamp}}@contentflow.cl\",\n  \"pais\": \"Chile\",\n  \"genero\": \"Femenino\",\n  \"dispositivo\": \"Móvil\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const u = pm.response.json();",
+                  "pm.collectionVariables.set('usuario_id', u._id); pm.collectionVariables.set('correo', u.correo);",
+                  "pm.test('Id generado user_N', () => pm.expect(u._id).to.match(/^user_\\d+$/));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario con correo repetido (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Copia\",\n  \"correo\": \"{{correo}}\",\n  \"pais\": \"Chile\",\n  \"genero\": \"Otro\",\n  \"dispositivo\": \"Tablet\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Error duplicado', () => pm.expect(pm.response.json().error).to.eql('duplicado'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario inválido (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"X\",\n  \"correo\": \"no-es-correo\",\n  \"genero\": \"Alien\",\n  \"dispositivo\": \"Móvil\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Informa los campos con problemas', () => pm.expect(pm.response.json().detalle.length).to.be.above(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Obtener usuario creado",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{usuario_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuario_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Mismo id', () => pm.expect(pm.response.json()._id).to.eql(pm.collectionVariables.get('usuario_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Actualizar dispositivo ($set)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{usuario_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuario_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"dispositivo\": \"Desktop\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Dispositivo actualizado', () => pm.expect(pm.response.json().dispositivo).to.eql('Desktop'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuario inexistente (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/user_99999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "user_99999"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. Publicaciones e interacciones",
+      "item": [
+        {
+          "name": "Crear publicación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"{{usuario_id}}\",\n  \"contenido\": \"Guía rápida: índices en MongoDB Atlas\",\n  \"categoria\": \"Educación\",\n  \"tipo\": \"Video\",\n  \"hashtags\": [\n    \"#aprendizaje\",\n    \"#innovacion\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('publicacion_id', pm.response.json()._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Publicación con usuario inexistente (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"user_99999\",\n  \"contenido\": \"x\",\n  \"categoria\": \"Cultura\",\n  \"tipo\": \"Texto\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Referencia inválida', () => pm.expect(pm.response.json().error).to.eql('referencia_invalida'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar publicaciones de Educación",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones?categoria=Educación&limit=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones"
+              ],
+              "query": [
+                {
+                  "key": "categoria",
+                  "value": "Educación"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Editar hashtags ($addToSet / $pull)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones/{{publicacion_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones",
+                "{{publicacion_id}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"agregar_hashtags\": [\n    \"#series\"\n  ],\n  \"quitar_hashtags\": [\n    \"#innovacion\"\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Hashtags editados', () => { const h = pm.response.json().hashtags; pm.expect(h).to.include('#series'); pm.expect(h).to.not.include('#innovacion'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reaccionar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reacciones",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reacciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"user_10\",\n  \"publicacion_id\": \"{{publicacion_id}}\",\n  \"tipo_reaccion\": \"Me encanta\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reaccionar de nuevo (409)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reacciones",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reacciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"user_10\",\n  \"publicacion_id\": \"{{publicacion_id}}\",\n  \"tipo_reaccion\": \"Me gusta\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reacción con tipo inválido (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reacciones",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reacciones"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"user_11\",\n  \"publicacion_id\": \"{{publicacion_id}}\",\n  \"tipo_reaccion\": \"Me divierte\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Comentar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/comentarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "comentarios"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario_id\": \"user_20\",\n  \"publicacion_id\": \"{{publicacion_id}}\",\n  \"comentario\": \"¡Muy útil, gracias!\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('comentario_id', pm.response.json()._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Like a comentario ($inc)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/comentarios/{{comentario_id}}/like",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "comentarios",
+                "{{comentario_id}}",
+                "like"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('likes = 1', () => pm.expect(pm.response.json().likes).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle con métricas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones/{{publicacion_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones",
+                "{{publicacion_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json().metricas_calculadas;",
+                  "pm.test('1 reacción y 1 comentario', () => { pm.expect(m.reacciones).to.eql(1); pm.expect(m.comentarios).to.eql(1); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Top publicaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones/populares?limite=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones",
+                "populares"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Campañas y reportes",
+      "item": [
+        {
+          "name": "Crear campaña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campanas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campanas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Campaña Semana NoSQL {{$timestamp}}\",\n  \"fecha_inicio\": \"2025-01-01T00:00:00Z\",\n  \"fecha_fin\": \"2026-12-31T23:59:59Z\",\n  \"objetivo\": \"Promover contenido\",\n  \"publicaciones_asociadas\": [\n    \"{{publicacion_id}}\",\n    \"pub_237\"\n  ],\n  \"metricas_objetivo\": {\n    \"likes\": 10,\n    \"comentarios\": 5,\n    \"compartidos\": 2\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('campana_id', pm.response.json()._id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Campaña con fechas al revés (422)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campanas",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campanas"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Mal fechada\",\n  \"fecha_inicio\": \"2025-06-01T00:00:00Z\",\n  \"fecha_fin\": \"2025-01-01T00:00:00Z\",\n  \"objetivo\": \"Promover contenido\",\n  \"metricas_objetivo\": {\n    \"likes\": 1,\n    \"comentarios\": 1,\n    \"compartidos\": 1\n  }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rendimiento de la campaña",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campanas/{{campana_id}}/rendimiento",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campanas",
+                "{{campana_id}}",
+                "rendimiento"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cuenta el like de la nueva publicación', () => pm.expect(pm.response.json().logro.likes).to.be.at.least(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Campañas vigentes al 1-may-2025",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campanas?vigentes_en=2025-05-01T00:00:00Z&limite=3",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campanas"
+              ],
+              "query": [
+                {
+                  "key": "vigentes_en",
+                  "value": "2025-05-01T00:00:00Z"
+                },
+                {
+                  "key": "limite",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuarios más activos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reportes/usuarios-activos?limite=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reportes",
+                "usuarios-activos"
+              ],
+              "query": [
+                {
+                  "key": "limite",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('5 usuarios', () => pm.expect(pm.response.json().length).to.eql(5));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Interacciones por hora",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/reportes/horarios",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "reportes",
+                "horarios"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. Limpieza (DELETE)",
+      "item": [
+        {
+          "name": "Eliminar usuario con actividad sin cascada (409)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{usuario_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuario_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar campaña",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/campanas/{{campana_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "campanas",
+                "{{campana_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Eliminar usuario en cascada (transacción)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{usuario_id}}?cascada=true",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuario_id}}"
+              ],
+              "query": [
+                {
+                  "key": "cascada",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verificar que ya no existe (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios/{{usuario_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "usuarios",
+                "{{usuario_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Su publicación tampoco (404)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/publicaciones/{{publicacion_id}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "publicaciones",
+                "{{publicacion_id}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Responde en menos de 3 s', () => pm.expect(pm.response.responseTime).to.be.below(3000));",
+          "pm.test('Trae X-Request-ID (trazabilidad)', () => pm.response.to.have.header('X-Request-ID'));"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "usuario_id",
+      "value": ""
+    },
+    {
+      "key": "correo",
+      "value": ""
+    },
+    {
+      "key": "publicacion_id",
+      "value": ""
+    },
+    {
+      "key": "comentario_id",
+      "value": ""
+    },
+    {
+      "key": "campana_id",
+      "value": ""
+    }
+  ]
+}
